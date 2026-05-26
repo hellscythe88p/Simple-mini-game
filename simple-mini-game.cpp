@@ -22,8 +22,10 @@ int main() {
     int hp = 150;
     int skyHeight = 540 * 2 / 7;
 
-    float kusaX = 0.0f;
-    float kumoX = 0.0f;
+    int invincibleTimer = 0;
+
+    float grassX = 0.0f;
+    float cloudX = 0.0f;
 
     int charaGraph = LoadGraph("chara.png");
 
@@ -49,24 +51,43 @@ int main() {
         if (y > 540 - charaSize) y = 540 - charaSize;
 
         // 背景スクロールの計算
-        kusaX -= 1.0f;
-        kumoX -= 0.2f;
-        if (kusaX < -60.0f)  kusaX = 0.0f;
-        if (kumoX < -120.0f) kumoX = 0.0f;
+        grassX -= 1.0f;
+        cloudX -= 0.2f;
+        if (grassX < -60.0f)  grassX = 0.0f;
+        if (cloudX < -120.0f) cloudX = 0.0f;
+
+        // 毎フレーム1ずつタイマーを減らす
+        if (invincibleTimer > 0) {
+            invincibleTimer--;
+        }
 
         // 3体の敵の移動と、出現位置の重複防止
         for (int i = 0; i < 3; i++) {
             if (enemies[i].isExist == true) {
                 enemies[i].x -= enemies[i].speed;
 
-                if (enemies[i].x < -100) {
+                // キャラクターと敵の当たり判定
+                if (invincibleTimer == 0) {
+                    int currentCharaSize = 90 + (y / 8);
+                    int enemyBaseSize = 35;
+                    int enemySize = enemyBaseSize + (enemies[i].y / 10);
 
+                    bool hitX = (x < enemies[i].x + enemySize) && (enemies[i].x < x + currentCharaSize);
+                    bool hitY = abs(y - enemies[i].y) < 30;
+
+                    if (hitX && hitY) {
+                        hp -= 30;
+                        invincibleTimer = 240; // 240フレームの無敵時間
+                        break; // 当たったら残りの敵の判定をせず、ループを抜ける
+                    }
+                }
+
+                if (enemies[i].x < -100) {
                     float newX = 960.0f;
                     int newY = rand() % (540 - charaSize - skyHeight) + skyHeight;
 
                     for (int j = 0; j < 3; j++) {
                         if (i == j) continue;
-
                         if (abs(newY - enemies[j].y) < 50 && fabsf(newX - enemies[j].x) < 200.0f) {
                             newX += 300.0f;
                         }
@@ -84,31 +105,32 @@ int main() {
         DrawBox(0, skyHeight, 960, 540, GetColor(80, 80, 80), TRUE);
 
         for (int i = 0; i < 10; i++) {
-            int drawKumoX = (int)kumoX + (i * 120);
-            DrawCircle(drawKumoX, skyHeight - 40, 20, GetColor(255, 255, 255), TRUE);
-            DrawCircle(drawKumoX + 15, skyHeight - 45, 25, GetColor(255, 255, 255), TRUE);
-            DrawCircle(drawKumoX + 30, skyHeight - 40, 20, GetColor(255, 255, 255), TRUE);
+            int drawCloudX = (int)cloudX + (i * 120);
+            DrawCircle(drawCloudX, skyHeight - 40, 20, GetColor(255, 255, 255), TRUE);
+            DrawCircle(drawCloudX + 15, skyHeight - 45, 25, GetColor(255, 255, 255), TRUE);
+            DrawCircle(drawCloudX + 30, skyHeight - 40, 20, GetColor(255, 255, 255), TRUE);
         }
 
         for (int i = 0; i < 18; i++) {
-            int drawKusaX = (int)kusaX + (i * 60);
-            DrawTriangle(drawKusaX, skyHeight, drawKusaX + 30, skyHeight - 20, drawKusaX + 60, skyHeight, GetColor(34, 139, 34), TRUE);
+            int drawGrassX = (int)grassX + (i * 60);
+            DrawTriangle(drawGrassX, skyHeight, drawGrassX + 30, skyHeight - 20, drawGrassX + 60, skyHeight, GetColor(34, 139, 34), TRUE);
         }
 
-        // 3体の敵をまとめて疑似3D描画
+        // 3体の敵をまとめて描画
         for (int i = 0; i < 3; i++) {
             if (enemies[i].isExist == true) {
                 int enemyBaseSize = 35;
                 int enemySize = enemyBaseSize + (enemies[i].y / 10);
-
                 int ex = (int)enemies[i].x;
                 DrawBox(ex, enemies[i].y, ex + enemySize, enemies[i].y + enemySize, GetColor(255, 0, 0), TRUE);
             }
         }
 
-        // キャラクターの疑似3D描画
+        // キャラクターの描画
         int currentCharaSize = 90 + (y / 8);
-        DrawExtendGraph(x, y, x + currentCharaSize, y + currentCharaSize, charaGraph, TRUE);
+        if (invincibleTimer == 0 || (invincibleTimer % 16 < 8)) {
+            DrawExtendGraph(x, y, x + currentCharaSize, y + currentCharaSize, charaGraph, TRUE);
+        }
 
         // UI表示
         DrawFormatString(20, 20, GetColor(255, 0, 0), "HP : %d", hp);
