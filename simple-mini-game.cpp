@@ -24,6 +24,8 @@ int main() {
 
     int invincibleTimer = 0;
 
+    bool isGameOver = false;
+
     float grassX = 0.0f;
     float cloudX = 0.0f;
 
@@ -39,68 +41,82 @@ int main() {
 
     while (ProcessMessage() == 0 && ScreenFlip() == 0 && ClearDrawScreen() == 0) {
 
-        if (CheckHitKey(KEY_INPUT_LEFT) == 1) x -= 3;
-        if (CheckHitKey(KEY_INPUT_RIGHT) == 1) x += 3;
-        if (CheckHitKey(KEY_INPUT_UP) == 1) y -= 3;
-        if (CheckHitKey(KEY_INPUT_DOWN) == 1) y += 3;
+        // 生存時だけ動かす
+        if (isGameOver == false) {
 
-        // 見えない壁の処理
-        if (x < 0) x = 0;
-        if (x > 750 - charaSize) x = 750 - charaSize;
-        if (y < skyHeight - 30) y = skyHeight - 30;
-        if (y > 540 - charaSize) y = 540 - charaSize;
+            // キーボード操作
+            if (CheckHitKey(KEY_INPUT_LEFT) == 1) x -= 3;
+            if (CheckHitKey(KEY_INPUT_RIGHT) == 1) x += 3;
+            if (CheckHitKey(KEY_INPUT_UP) == 1) y -= 3;
+            if (CheckHitKey(KEY_INPUT_DOWN) == 1) y += 3;
 
-        // 背景スクロールの計算
-        grassX -= 1.0f;
-        cloudX -= 0.2f;
-        if (grassX < -60.0f)  grassX = 0.0f;
-        if (cloudX < -120.0f) cloudX = 0.0f;
+            // 見えない壁の処理
+            if (x < 0) x = 0;
+            if (x > 750 - charaSize) x = 750 - charaSize;
+            if (y < skyHeight - 30) y = skyHeight - 30;
+            if (y > 540 - charaSize) y = 540 - charaSize;
 
-        // 毎フレーム1ずつタイマーを減らす
-        if (invincibleTimer > 0) {
-            invincibleTimer--;
-        }
+            // 背景スクロールの計算
+            grassX -= 1.0f;
+            cloudX -= 0.2f;
+            if (grassX < -60.0f)  grassX = 0.0f;
+            if (cloudX < -120.0f) cloudX = 0.0f;
 
-        // 3体の敵の移動と、出現位置の重複防止
-        for (int i = 0; i < 3; i++) {
-            if (enemies[i].isExist == true) {
-                enemies[i].x -= enemies[i].speed;
+            // 無敵タイマーのカウントダウン
+            if (invincibleTimer > 0) {
+                invincibleTimer--;
+            }
 
-                // キャラクターと敵の当たり判定
-                if (invincibleTimer == 0) {
-                    int currentCharaSize = 90 + (y / 8);
-                    int enemyBaseSize = 35;
-                    int enemySize = enemyBaseSize + (enemies[i].y / 10);
+            // 3体の敵の移動と、出現位置の重複防止
+            for (int i = 0; i < 3; i++) {
+                if (enemies[i].isExist == true) {
+                    enemies[i].x -= enemies[i].speed;
 
-                    bool hitX = (x < enemies[i].x + enemySize) && (enemies[i].x < x + currentCharaSize);
-                    bool hitY = abs(y - enemies[i].y) < 30;
+                    // キャラクターと敵の当たり判定
+                    if (invincibleTimer == 0) {
+                        int currentCharaSize = 90 + (y / 8);
+                        int enemyBaseSize = 35;
+                        int enemySize = enemyBaseSize + (enemies[i].y / 10);
 
-                    if (hitX && hitY) {
-                        hp -= 30;
-                        invincibleTimer = 240; // 240フレームの無敵時間
-                        break; // 当たったら残りの敵の判定をせず、ループを抜ける
-                    }
-                }
+                        bool hitX = (x < enemies[i].x + enemySize) && (enemies[i].x < x + currentCharaSize);
+                        bool hitY = abs(y - enemies[i].y) < 30;
 
-                if (enemies[i].x < -100) {
-                    float newX = 960.0f;
-                    int newY = rand() % (540 - charaSize - skyHeight) + skyHeight;
+                        if (hitX && hitY) {
+                            hp -= 30;
 
-                    for (int j = 0; j < 3; j++) {
-                        if (i == j) continue;
-                        if (abs(newY - enemies[j].y) < 50 && fabsf(newX - enemies[j].x) < 200.0f) {
-                            newX += 300.0f;
+                            // HPが0以下になったらゲームオーバー
+                            if (hp <= 0) {
+                                hp = 0;
+                                isGameOver = true;
+                            } else {
+                                invincibleTimer = 360; // まだ生きていれば無敵時間をセット
+                            }
+                            break;
                         }
                     }
 
-                    enemies[i].x = newX;
-                    enemies[i].y = newY;
-                    enemies[i].speed = (rand() % 16 / 10.0f) + 1.0f;
+                    // 画面外に出た敵のリセット
+                    if (enemies[i].x < -100) {
+                        float newX = 960.0f;
+                        int newY = rand() % (540 - charaSize - skyHeight) + skyHeight;
+
+                        for (int j = 0; j < 3; j++) {
+                            if (i == j) continue;
+                            if (abs(newY - enemies[j].y) < 50 && fabsf(newX - enemies[j].x) < 200.0f) {
+                                newX += 300.0f;
+                            }
+                        }
+
+                        enemies[i].x = newX;
+                        enemies[i].y = newY;
+                        enemies[i].speed = (rand() % 16 / 10.0f) + 1.0f;
+                    }
                 }
             }
         }
+        // ====================================================================================
 
-        // --- 描画処理 ---
+        // 描画処理
         DrawBox(0, 0, 960, skyHeight, GetColor(135, 206, 235), TRUE);
         DrawBox(0, skyHeight, 960, 540, GetColor(80, 80, 80), TRUE);
 
@@ -116,7 +132,7 @@ int main() {
             DrawTriangle(drawGrassX, skyHeight, drawGrassX + 30, skyHeight - 20, drawGrassX + 60, skyHeight, GetColor(34, 139, 34), TRUE);
         }
 
-        // 3体の敵をまとめて描画
+        // 3体の敵の描画
         for (int i = 0; i < 3; i++) {
             if (enemies[i].isExist == true) {
                 int enemyBaseSize = 35;
@@ -128,20 +144,42 @@ int main() {
 
         // キャラクターの描画
         int currentCharaSize = 90 + (y / 8);
-        if (invincibleTimer == 0 || (invincibleTimer % 16 < 8)) {
+        // ゲームオーバー時は点滅させずにそのまま表示する
+        if (isGameOver || invincibleTimer == 0 || (invincibleTimer % 16 < 8)) {
             DrawExtendGraph(x, y, x + currentCharaSize, y + currentCharaSize, charaGraph, TRUE);
         }
 
-        // UI表示
-        DrawFormatString(20, 20, GetColor(255, 0, 0), "HP : %d", hp);
-        unsigned int barColor = GetColor(255, 255, 255);
-        if (hp >= 91)       barColor = GetColor(0, 255, 0);
-        else if (hp >= 31)  barColor = GetColor(255, 255, 0);
-        else                barColor = GetColor(255, 0, 0);
+        // 生存中とゲームオーバー中で表示を分離
+        if (isGameOver == false) {
 
-        DrawBox(20, 45, 170, 65, GetColor(0, 0, 0), FALSE);
-        if (hp > 0) {
+            // ゲーム中のUI表示
+            SetFontSize(16); // 通常の文字サイズに戻す
+            DrawFormatString(20, 20, GetColor(255, 0, 0), "HP : %d", hp);
+
+            // 体力バーの色
+            unsigned int barColor = GetColor(255, 255, 255);
+            if (hp >= 91)       barColor = GetColor(0, 255, 0);
+            else if (hp >= 31)  barColor = GetColor(255, 255, 0);
+            else                barColor = GetColor(255, 0, 0);
+
+            // 黒い枠線と中身のバー（生きている間だけ描画する）
+            DrawBox(20, 45, 170, 65, GetColor(0, 0, 0), FALSE);
             DrawBox(20, 45, 20 + hp, 65, barColor, TRUE);
+
+        }
+        else {
+
+            // ゲームオーバー中のUI
+
+            // 画面中央にGAME OVER
+            SetFontSize(86);
+            SetFontThickness(6);
+            DrawString(300, 200, "GAME OVER", GetColor(255, 0, 0));
+
+            // その下にHP : 0表示
+            SetFontSize(36);
+            SetFontThickness(5);
+            DrawFormatString(430, 280, GetColor(0, 50, 255), "HP : %d", hp);
         }
     }
 
